@@ -919,7 +919,7 @@ class Qwen2_5OmniAudioEncoder(Qwen2_5OmniPreTrainedModel):
         token_audio_list = []
         for each_audio_states in hidden_states_list:
             pooled = each_audio_states.transpose(0, 1)  # (B=1, H, T)
-            seq_len = pooled.size(2)
+            seq_len = pooled.size(-1)
             if seq_len < 2:
                 pooled = F.avg_pool1d(pooled, kernel_size=seq_len)  # 输出(1, H, 1)
             else:
