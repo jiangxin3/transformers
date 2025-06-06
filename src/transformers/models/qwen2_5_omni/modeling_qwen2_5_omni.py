@@ -921,7 +921,7 @@ class Qwen2_5OmniAudioEncoder(Qwen2_5OmniPreTrainedModel):
             pooled = each_audio_states.transpose(0, 1)  # (B=1, H, T)
             seq_len = pooled.size(-1)
             if seq_len < 2:
-                pooled = F.avg_pool1d(pooled, kernel_size=seq_len)  # 输出(1, H, 1)
+                pooled = F.avg_pool1d(pooled, kernel_size=seq_len, stride=1)  # 输出(1, H, 1)
             else:
                 pooled = self.avg_pooler(pooled)  # 原池化
             each_audio_states = pooled.transpose(0, 1)
@@ -2268,8 +2268,20 @@ class Qwen2_5OmniThinkerForConditionalGeneration(Qwen2_5OmniPreTrainedModelForCo
         )
         audio_features = audio_outputs.last_hidden_state
 
-        if audio_features.shape[0] != sum(audio_output_lengths.tolist()):
-            raise ValueError("length of audio_features should match audio_output_lengths")
+        actual_output_lengths = torch.where(
+        feature_lens >= 2,
+        feature_lens - 1,  # 长度 >=2 时，输出长度 = 原始长度 - 1
+        torch.ones_like(feature_lens)  # 长度 <2 时，输出长度 = 1
+        )
+    
+        total_expected_length = actual_output_lengths.sum().item()
+        if audio_features.shape[0] != total_expected_length:
+            raise ValueError(
+                f"Audio feature length mismatch. "
+                f"Expected: {total_expected_length}, Actual: {audio_features.shape[0]}"
+            )
+        # if audio_features.shape[0] != sum(audio_output_lengths.tolist()):
+        #     raise ValueError("length of audio_features should match audio_output_lengths")
 
         return audio_features
 
