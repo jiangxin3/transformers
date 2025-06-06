@@ -2254,6 +2254,12 @@ class Qwen2_5OmniThinkerForConditionalGeneration(Qwen2_5OmniPreTrainedModelForCo
         audio_feat_lengths, audio_output_lengths = self.audio_tower._get_feat_extract_output_lengths(
             audio_feature_lengths if audio_feature_lengths is not None else feature_attention_mask.sum(-1)
         )
+        target_kernel_size = 2
+        audio_output_lengths = torch.where(
+            audio_feat_lengths < target_kernel_size,
+            torch.ones_like(audio_feat_lengths),  # 短序列 -> 长度1
+            audio_feat_lengths - target_kernel_size + 1  # 长序列 -> T - kernel + 1
+        )
         feature_lens = audio_feature_lengths if audio_feature_lengths is not None else feature_attention_mask.sum(-1)
         audio_outputs = self.audio_tower(
             input_features,
