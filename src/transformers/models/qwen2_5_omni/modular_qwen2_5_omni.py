@@ -1835,19 +1835,12 @@ class Qwen2_5OmniAudioEncoder(Qwen2_5OmniPreTrainedModel):
         token_audio_list = []
         target_kernel_size = 2
         for each_audio_states in hidden_states_list:
-            pooled = each_audio_states.transpose(0, 1)  # 转为 (B, H, T)
-            seq_len = pooled.size(-1)
-            if seq_len < target_kernel_size:
-                # 短序列处理：取整个序列平均（等效于全局平均）
-                pooled = F.avg_pool1d(
-                    pooled, 
-                    kernel_size=seq_len, 
-                    stride=1, 
-                    padding=0
-                )
+            pooled = each_audio_states.transpose(0, 1)  # (B=1, H, T)
+            seq_len = pooled.size(2)
+            if seq_len < 2:
+                pooled = F.avg_pool1d(pooled, kernel_size=seq_len)  # 输出(1, H, 1)
             else:
-                # 正常执行原池化操作
-                pooled = self.avg_pooler(pooled)
+                pooled = self.avg_pooler(pooled)  # 原池化
             each_audio_states = pooled.transpose(0, 1)
             #each_audio_states = self.avg_pooler(each_audio_states.transpose(0, 1)).transpose_(0, 1)
             each_audio_states = self.ln_post(each_audio_states)
